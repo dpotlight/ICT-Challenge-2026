@@ -1,0 +1,84 @@
+"""트래픽 관제 시연 웹 서비스 — FastAPI 엔트리.
+
+실행 (서버, tmux 안):
+    cd 5_webapp/backend
+    ~/miniconda3/envs/itrc/bin/python -m uvicorn app:app --host 0.0.0.0 --port 8300
+"""
+
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from fastapi import FastAPI
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
+
+import settings
+from api import firewall, uploads
+from core.model_service import get_service
+
+app = FastAPI(title="암호화 트래픽 이미지 기반 관제 시스템", version="1.0")
+
+app.include_router(uploads.router)
+app.include_router(firewall.router)
+
+
+@app.get("/api/meta")
+def meta():
+    return get_service().meta()
+
+
+@app.get("/api/system")
+def system_stats():
+    """실시간 시스템 부하 — /proc 기반이라 추가 의존성 없음."""
+    import os
+    try:
+        load1 = os.getloadavg()[0]
+        cpu_pct = round(min(load1 / (os.cpu_count() or 1) * 100, 100), 1)
+    except OSError:
+        cpu_pct = None
+    mem_total = mem_avail = None
+    try:
+        with open("/proc/meminfo") as fh:
+            for line in fh:
+                if line.startswith("MemTotal:"):
+                    mem_total = int(line.split()[1]) * 1024
+                elif line.startswith("MemAvailable:"):
+                    mem_avail = int(line.split()[1]) * 1024
+                if mem_total and mem_avail:
+                    break
+    except OSError:
+        pass
+    mem_pct = mem_used_gb = mem_total_gb = None
+    if mem_total and mem_avail is not None:
+        mem_pct = round((mem_total - mem_avail) / mem_total * 100, 1)
+        mem_used_gb = round((mem_total - mem_avail) / 1024**3, 1)
+        mem_total_gb = round(mem_total / 1024**3, 1)
+    return {"cpu_pct": cpu_pct, "mem_pct": mem_pct,
+            "mem_used_gb": mem_used_gb, "mem_total_gb": mem_total_gb,
+            "device": get_service().device}
+
+
+@app.get("/health")
+def health():
+    return {"status": "ok"}
+
+
+# ── React 빌드 정적 서빙 + SPA fallback ──
+if settings.FRONTEND_DIST.exists():
+    app.mount("/assets", StaticFiles(directory=settings.FRONTEND_DIST / "assets"), name="assets")
+
+    @app.get("/{spa_path:path}")
+    def spa(spa_path: str):
+        target = settings.FRONTEND_DIST / spa_path
+        if spa_path and target.is_file():
+            return FileResponse(target)
+        return FileResponse(settings.FRONTEND_DIST / "index.html")
+
+
+@app.on_event("startup")
+def warmup():
+    svc = get_service()
+    print(f"[webapp] model={svc.model_file} transform={svc.transform} "
+          f"K={svc.K} device={svc.device} classes={svc.classes}")

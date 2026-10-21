@@ -1,0 +1,29 @@
+ZERO-CLA v83 — 시연 영상 페이지 추가
+====================================
+
+[ 서버에 바로 반영하려면 ]
+frontend/dist 안의 파일만 서버의 같은 경로에 덮어쓰면 됩니다.
+
+  dist/index.html                       (번들 해시가 바뀌어 교체 필요)
+  dist/assets/index-Drlk_wdT.js         (새 번들)
+  dist/assets/index-C9Wr5N-E.css        (새 스타일)
+  dist/media/zerocla_demo_66s.mp4       (영상 3.0MB)
+  dist/media/zerocla_demo_poster.jpg    (포스터)
+
+이전 번들 index-_kIsa-zM.js 와 index-Zml_RGjA.css 는 지우셔도 됩니다.
+폰트와 이미지 자산은 해시가 그대로라 다시 올릴 필요가 없습니다.
+
+[ 소스에도 반영하려면 ]
+  src/App.tsx              (import 1줄, CORE_LINKS 1줄, Route 1줄 추가)
+  src/pages/DemoPage.tsx   (새 파일)
+  src/styles/global.css    (맨 아래 .demo-* 블록 추가)
+  public/media/            → dist/media/ 안의 영상과 포스터를 그대로 복사해 두세요 (용량 때문에 중복 제외)
+
+vite.config.ts 는 패치에 원래 없어서 제가 임시로 만들어 빌드했습니다.
+원본 vite.config.ts 가 따로 있으시면 그걸 그대로 쓰시면 되고 덮어쓰지 마세요.
+
+[ 바뀐 것 ]
+- 상단 캡슐 메뉴 코어 그룹에 "시연 영상" 추가 (관제 콘솔 / 방화벽 다음)
+- 주소는 zero-cla.cloud/#/demo
+- 챕터 버튼 8개를 누르면 해당 구간으로 이동하고 재생 중 현재 구간이 표시됩니다
+- 라이트와 다크 모두에서 확인했습니다

@@ -1,0 +1,212 @@
+import { useEffect, useState } from "react";
+import { NavLink, Route, Routes, useLocation } from "react-router-dom";
+import { BrandMark } from "./components/Brand";
+import LandingPage from "./pages/LandingPage";
+import RoadmapPage from "./pages/RoadmapPage";
+import UploadPage from "./pages/UploadPage";
+import DashboardPage from "./pages/DashboardPage";
+import FlowDetailPage from "./pages/FlowDetailPage";
+import FirewallPage from "./pages/FirewallPage";
+import TheoryPage from "./pages/TheoryPage";
+import AttacksPage from "./pages/AttacksPage";
+import AttackDetailPage from "./pages/AttackDetailPage";
+import ReportPage from "./pages/ReportPage";
+import LightweightPage from "./pages/LightweightPage";
+
+/* ── 테마 ── */
+type Theme = "light" | "dark";
+
+function getInitialTheme(): Theme {
+  try {
+    const saved = localStorage.getItem("zc-theme");
+    if (saved === "dark" || saved === "light") return saved;
+  } catch {
+    /* noop */
+  }
+  return "light";
+}
+
+function useTheme() {
+  const [theme, setTheme] = useState<Theme>(getInitialTheme);
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    try {
+      localStorage.setItem("zc-theme", theme);
+    } catch {
+      /* noop */
+    }
+  }, [theme]);
+  return { theme, toggle: () => setTheme((t) => (t === "light" ? "dark" : "light")) };
+}
+
+function ThemeButton({ theme, onToggle }: { theme: Theme; onToggle: () => void }) {
+  return (
+    <button
+      className="theme-btn"
+      onClick={onToggle}
+      title={theme === "light" ? "다크 모드로 전환" : "라이트 모드로 전환"}
+      aria-label="테마 전환"
+    >
+      {theme === "light" ? (
+        <svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
+          <path d="M15.6 12.2A6.4 6.4 0 0 1 7.8 4.4a6.4 6.4 0 1 0 7.8 7.8Z" strokeLinejoin="round" />
+        </svg>
+      ) : (
+        <svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
+          <circle cx="10" cy="10" r="4" />
+          <path d="M10 1.6v2M10 16.4v2M1.6 10h2M16.4 10h2M4 4l1.4 1.4M14.6 14.6 16 16M16 4l-1.4 1.4M5.4 14.6 4 16" />
+        </svg>
+      )}
+    </button>
+  );
+}
+
+/* ── 상단 네비게이션 ── */
+const CORE_LINKS = [
+  { to: "/console", label: "관제 콘솔", also: "/uploads" },
+  { to: "/firewall", label: "방화벽" },
+];
+const DOC_LINKS = [
+  { to: "/theory", label: "기술 원리" },
+  { to: "/attacks", label: "공격 유형" },
+  { to: "/lightweight", label: "경량화" },
+  { to: "/roadmap", label: "팀 로드맵" },
+];
+const LINKS = [...CORE_LINKS, ...DOC_LINKS];
+
+function TopNav({ theme, onToggle }: { theme: Theme; onToggle: () => void }) {
+  const loc = useLocation();
+  const [scrolled, setScrolled] = useState(false);
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 30);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    onScroll();
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  useEffect(() => setOpen(false), [loc.pathname]);
+
+  const clear = loc.pathname === "/" && !scrolled && !open;
+
+  const cls = (l: { to: string; label: string; also?: string }) =>
+    ({ isActive }: { isActive: boolean }) =>
+      isActive || (l.also && loc.pathname.startsWith(l.also)) ? "active" : "";
+
+  return (
+    <>
+      <header className={`topnav ${clear ? "clear" : ""}`}>
+        <NavLink to="/" className="brand" title="헤더는 읽고 페이로드는 열지 않습니다">
+          <BrandMark width={42} />
+          <span className="bname">ZERO-CLA</span>
+        </NavLink>
+
+        <nav className="nav-links">
+          {CORE_LINKS.map((l) => (
+            <NavLink key={l.to} to={l.to} className={(p) => `core ${cls(l)(p)}`}>
+              {l.label}
+            </NavLink>
+          ))}
+          <span className="nav-div" aria-hidden="true" />
+          {DOC_LINKS.map((l) => (
+            <NavLink key={l.to} to={l.to} className={cls(l)}>
+              {l.label}
+            </NavLink>
+          ))}
+        </nav>
+
+        <div className="nav-right">
+          <ThemeButton theme={theme} onToggle={onToggle} />
+          <button className="nav-burger" aria-label="메뉴" onClick={() => setOpen((v) => !v)}>
+            {open ? (
+              <svg width="18" height="18" viewBox="0 0 18 18" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+                <path d="M4 4l10 10M14 4 4 14" />
+              </svg>
+            ) : (
+              <svg width="18" height="18" viewBox="0 0 18 18" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+                <path d="M3 5h12M3 9h12M3 13h12" />
+              </svg>
+            )}
+          </button>
+        </div>
+      </header>
+
+      <div className={`nav-drawer ${open ? "open" : ""}`}>
+        <span className="drawer-label">분석</span>
+        {CORE_LINKS.map((l) => (
+          <NavLink key={l.to} to={l.to} className={cls(l)}>
+            {l.label}
+          </NavLink>
+        ))}
+        <span className="drawer-label">알아보기</span>
+        {DOC_LINKS.map((l) => (
+          <NavLink key={l.to} to={l.to} className={cls(l)}>
+            {l.label}
+          </NavLink>
+        ))}
+      </div>
+    </>
+  );
+}
+
+function ScrollTopButton() {
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    const onScroll = () => setVisible(window.scrollY > 600);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    onScroll();
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+  return (
+    <button
+      className={`scroll-top ${visible ? "show" : ""}`}
+      title="맨 위로"
+      aria-label="맨 위로"
+      onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+    >
+      ↑
+    </button>
+  );
+}
+
+/* 라우트 이동 시 맨 위로 */
+function ScrollToTop() {
+  const { pathname } = useLocation();
+  useEffect(() => window.scrollTo(0, 0), [pathname]);
+  return null;
+}
+
+export default function App() {
+  const { theme, toggle } = useTheme();
+  const loc = useLocation();
+  const landing = loc.pathname === "/";
+
+  return (
+    <div className="shell">
+      <ScrollToTop />
+      <TopNav theme={theme} onToggle={toggle} />
+      <main className="content">
+        {landing ? (
+          <LandingPage />
+        ) : (
+          <div className="page">
+            <Routes>
+              <Route path="/console" element={<UploadPage />} />
+              <Route path="/uploads/:id" element={<DashboardPage />} />
+              <Route path="/uploads/:id/flows/:row" element={<FlowDetailPage />} />
+              <Route path="/uploads/:id/report" element={<ReportPage />} />
+              <Route path="/firewall" element={<FirewallPage />} />
+              <Route path="/theory" element={<TheoryPage />} />
+              <Route path="/attacks" element={<AttacksPage />} />
+              <Route path="/attacks/:aid" element={<AttackDetailPage />} />
+              <Route path="/lightweight" element={<LightweightPage />} />
+              <Route path="/roadmap" element={<RoadmapPage />} />
+            </Routes>
+          </div>
+        )}
+      </main>
+      <ScrollTopButton />
+    </div>
+  );
+}

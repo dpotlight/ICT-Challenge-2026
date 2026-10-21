@@ -1,0 +1,12 @@
+node_modules/
+dist/
+*.zip
+*.pt
+*.pth
+*.onnx
+*.npy
+*.csv
+.env
+__pycache__/
+*.log
+.venv/
